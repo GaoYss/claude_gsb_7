@@ -14,6 +14,7 @@ from .extensions import db
 from .models import GreenSpace
 from .services import (
     GreenSpaceService,
+    HandoverAcceptanceService,
     MaintenanceRecordService,
     MaintenanceTaskService,
     PlantReplacementService,
@@ -207,7 +208,8 @@ def seed_command(reset, seed_value):
     summary = generate_demo_data(random.Random(seed_value))
     click.echo(
         "演示数据写入完成：绿地 {green_space} 处、养护任务 {maintenance_task} 条、"
-        "养护记录 {maintenance_record} 条、绿植更换 {plant_replacement} 条".format(**summary)
+        "养护记录 {maintenance_record} 条、绿植更换 {plant_replacement} 条、"
+        "移交验收单 {handover_acceptance} 份".format(**summary)
     )
 
 
@@ -220,12 +222,15 @@ def generate_demo_data(rng):
         "maintenance_task": 0,
         "maintenance_record": 0,
         "plant_replacement": 0,
+        "handover_acceptance": 0,
     }
 
+    spaces = []
     for index, space_seed in enumerate(SPACE_SEEDS):
         payload = dict(space_seed)
         space = GreenSpaceService.create(payload)
         counts["green_space"] += 1
+        spaces.append(space)
 
         # 已归档绿地不允许再登记任务与记录，仅保留台账
         if space.status == "archived":
@@ -323,5 +328,124 @@ def generate_demo_data(rng):
         })
         counts["maintenance_task"] += 1
 
+    _generate_acceptances(spaces, today_, rng, counts)
+
     db.session.commit()
     return counts
+
+
+def _generate_acceptances(spaces, today_, rng, counts):
+    """移交验收演示数据：覆盖待验收、整改中、质保中（含回访）三种状态。"""
+
+    def space_named(name):
+        return next((item for item in spaces if item.name == name), None)
+
+    # 1) 验收通过、质保期内：含完整苗木核对与两条回访记录
+    park = space_named("运河文化公园")
+    if park is not None:
+        acceptance = HandoverAcceptanceService.create({
+            "green_space_id": park.id,
+            "handover_party": "杭州运河建设开发有限公司",
+            "receiver": "拱墅区绿化养护管理所",
+            "area_sqm": 46200,
+            "warranty_months": 24,
+            "inspector": "钱工",
+            "remark": "运河东岸景观提升工程移交验收。",
+            "plants": [
+                {"plant_name": "垂柳", "plant_category": "tree", "spec": "胸径 15-18cm",
+                 "quantity": 120, "unit": "plant"},
+                {"plant_name": "黄山栾树", "plant_category": "tree", "spec": "胸径 12-14cm",
+                 "quantity": 68, "unit": "plant"},
+                {"plant_name": "鸢尾麦冬混植地被", "plant_category": "ground", "spec": "满铺",
+                 "quantity": 12000, "unit": "square_meter"},
+            ],
+        })
+        items = acceptance.plant_items
+        HandoverAcceptanceService.accept(acceptance.id, {
+            "acceptance_date": today_ - timedelta(days=210),
+            "measured_area_sqm": 46150,
+            "inspector": "钱工",
+            "checks": [
+                {"plant_item_id": items[0].id, "checked_quantity": 118,
+                 "growth_status": "good", "check_result": "qualified"},
+                {"plant_item_id": items[1].id, "checked_quantity": 68,
+                 "growth_status": "good", "check_result": "qualified"},
+                {"plant_item_id": items[2].id, "checked_quantity": 11900,
+                 "growth_status": "normal", "check_result": "qualified"},
+            ],
+        })
+        HandoverAcceptanceService.add_follow_up(acceptance.id, {
+            "visit_date": today_ - timedelta(days=150),
+            "issue": "两株垂柳出现天牛蛀孔，要求移交方安排防治",
+            "handling": "移交方已注药防治并复查，蛀孔无新增",
+            "status": "resolved",
+            "visitor": "俞晓慧",
+        })
+        HandoverAcceptanceService.add_follow_up(acceptance.id, {
+            "visit_date": today_ - timedelta(days=20),
+            "issue": "汛期后沿河 200 平方米地被局部冲毁，待移交方补植",
+            "handling": "已通知移交方，约定两周内补植到位",
+            "status": "open",
+            "visitor": "俞晓慧",
+        })
+        counts["handover_acceptance"] += 1
+
+    # 2) 整改中：验收发现缺陷，整改清单跟踪中
+    avenue = space_named("滨江公园樱花大道")
+    if avenue is not None:
+        acceptance = HandoverAcceptanceService.create({
+            "green_space_id": avenue.id,
+            "handover_party": "滨江区市政园林工程有限公司",
+            "receiver": "滨江区城市管理局绿化科",
+            "area_sqm": 23800,
+            "warranty_months": 12,
+            "inspector": "林轶",
+            "plants": [
+                {"plant_name": "染井吉野樱", "plant_category": "tree", "spec": "地径 10-12cm",
+                 "quantity": 180, "unit": "plant"},
+                {"plant_name": "时令花卉", "plant_category": "flower", "spec": "杯苗",
+                 "quantity": 3600, "unit": "square_meter"},
+            ],
+        })
+        items = acceptance.plant_items
+        HandoverAcceptanceService.accept(acceptance.id, {
+            "acceptance_date": today_ - timedelta(days=18),
+            "measured_area_sqm": 23760,
+            "inspector": "林轶",
+            "checks": [
+                {"plant_item_id": items[0].id, "checked_quantity": 176,
+                 "growth_status": "normal", "check_result": "unqualified"},
+                {"plant_item_id": items[1].id, "checked_quantity": 3600,
+                 "growth_status": "good", "check_result": "qualified"},
+            ],
+            "defects": [
+                {"description": "4 株樱花死亡、2 株严重偏冠",
+                 "requirement": "更换同规格苗木并加固支撑",
+                 "deadline": today_ + timedelta(days=20)},
+                {"description": "树穴覆盖物缺失约 40 处",
+                 "requirement": "补铺树皮覆盖物，厚度不低于 5cm",
+                 "deadline": today_ + timedelta(days=12)},
+            ],
+        })
+        counts["handover_acceptance"] += 1
+
+    # 3) 待验收：已登记移交信息，尚未组织验收
+    road = space_named("文一西路沿线绿地")
+    if road is not None:
+        HandoverAcceptanceService.create({
+            "green_space_id": road.id,
+            "handover_party": "杭州城西科创建设投资有限公司",
+            "receiver": "余杭区综合行政执法局",
+            "area_sqm": 31500,
+            "warranty_months": 12,
+            "remark": "道路配套绿化工程，待组织联合验收。",
+            "plants": [
+                {"plant_name": "银杏", "plant_category": "tree", "spec": "胸径 14-16cm",
+                 "quantity": 210, "unit": "plant"},
+                {"plant_name": "金森女贞色块", "plant_category": "shrub", "spec": "H40cm",
+                 "quantity": 3400, "unit": "square_meter"},
+                {"plant_name": "马尼拉草坪", "plant_category": "ground", "spec": "满铺",
+                 "quantity": 9800, "unit": "square_meter"},
+            ],
+        })
+        counts["handover_acceptance"] += 1

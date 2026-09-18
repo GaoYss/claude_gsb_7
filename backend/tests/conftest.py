@@ -151,6 +151,34 @@ def make_replacement(make_space):
 
 
 @pytest.fixture()
+def make_acceptance(make_space):
+    from app.services import HandoverAcceptanceService
+
+    counter = {"n": 0}
+
+    def _make(space=None, **overrides):
+        counter["n"] += 1
+        space = space or make_space()
+        payload = {
+            "green_space_id": space.id,
+            "handover_party": f"建设单位{counter['n']}",
+            "receiver": "区绿化养护管理所",
+            "area_sqm": 1200,
+            "warranty_months": 12,
+            "plants": [
+                {"plant_name": "香樟", "plant_category": "tree", "spec": "胸径 15cm",
+                 "quantity": 36, "unit": "plant"},
+                {"plant_name": "马尼拉草坪", "plant_category": "ground", "spec": "满铺",
+                 "quantity": 800, "unit": "square_meter"},
+            ],
+        }
+        payload.update(overrides)
+        return HandoverAcceptanceService.create(payload)
+
+    return _make
+
+
+@pytest.fixture()
 def seeded(app):
     """写入演示数据（固定随机种子，保证断言稳定）。"""
 

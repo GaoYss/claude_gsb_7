@@ -1,6 +1,6 @@
 """日期解析与序列化辅助。"""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 def parse_date(value, field_label="日期"):
@@ -42,3 +42,16 @@ def format_datetime(value):
 
 def today():
     return datetime.now().date()
+
+
+def add_months(value, months):
+    """日期按月偏移（月底日期自动回退到目标月最后一天），用于质保期推算。"""
+
+    month_index = value.year * 12 + (value.month - 1) + months
+    year, month = divmod(month_index, 12)
+    month += 1
+    if month == 12:
+        last_day = date(year, 12, 31)
+    else:
+        last_day = date(year, month + 1, 1) - timedelta(days=1)
+    return date(year, month, min(value.day, last_day.day))

@@ -44,6 +44,18 @@ const routes = [
         component: () => import('@/views/replacement/ReplacementListView.vue'),
         meta: { title: '绿植更换', icon: 'Cherry' },
       },
+      {
+        path: 'acceptances',
+        name: 'acceptance-list',
+        component: () => import('@/views/acceptance/AcceptanceListView.vue'),
+        meta: { title: '移交验收', icon: 'DocumentChecked' },
+      },
+      {
+        path: 'acceptances/:id',
+        name: 'acceptance-detail',
+        component: () => import('@/views/acceptance/AcceptanceDetailView.vue'),
+        meta: { title: '验收单详情', activeMenu: '/acceptances' },
+      },
     ],
   },
   {

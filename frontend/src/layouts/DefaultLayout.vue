@@ -67,6 +67,7 @@ const menuItems = [
   { path: '/tasks', title: '养护任务', icon: 'Tickets' },
   { path: '/records', title: '养护记录', icon: 'Notebook' },
   { path: '/replacements', title: '绿植更换', icon: 'Cherry' },
+  { path: '/acceptances', title: '移交验收', icon: 'DocumentChecked' },
 ]
 
 const activeMenu = computed(() => route.meta?.activeMenu || route.path)

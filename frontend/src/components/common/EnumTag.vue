@@ -21,6 +21,11 @@ const TAG_TYPES = {
   quality_result: { qualified: 'success', pending: 'warning', unqualified: 'danger' },
   maintenance_grade: { level1: 'success', level2: 'primary', level3: 'info' },
   replacement_reason: { dead: 'danger', disease: 'warning', aging: 'info', upgrade: 'primary' },
+  acceptance_status: { pending: 'info', rectifying: 'warning', passed: 'success', closed: 'info' },
+  item_check_result: { unchecked: 'info', qualified: 'success', unqualified: 'danger' },
+  growth_status: { good: 'success', normal: 'primary', weak: 'warning', dead: 'danger' },
+  defect_status: { open: 'warning', done: 'success' },
+  follow_up_status: { open: 'warning', resolved: 'success' },
 }
 
 const meta = useMetaStore()

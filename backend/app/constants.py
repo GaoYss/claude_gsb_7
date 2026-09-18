@@ -130,6 +130,37 @@ MEASURE_UNIT = EnumGroup("measure_unit", [
     ("clump", "丛"),
 ])
 
+# ---------------------------------------------------------------- 移交验收
+ACCEPTANCE_STATUS = EnumGroup("acceptance_status", [
+    ("pending", "待验收"),
+    ("rectifying", "整改中"),
+    ("passed", "验收通过"),
+    ("closed", "已办结"),
+])
+
+ITEM_CHECK_RESULT = EnumGroup("item_check_result", [
+    ("unchecked", "待核对"),
+    ("qualified", "合格"),
+    ("unqualified", "不合格"),
+])
+
+GROWTH_STATUS = EnumGroup("growth_status", [
+    ("good", "长势良好"),
+    ("normal", "长势一般"),
+    ("weak", "长势偏弱"),
+    ("dead", "枯死"),
+])
+
+DEFECT_STATUS = EnumGroup("defect_status", [
+    ("open", "待整改"),
+    ("done", "已整改"),
+])
+
+FOLLOW_UP_STATUS = EnumGroup("follow_up_status", [
+    ("open", "处理中"),
+    ("resolved", "已解决"),
+])
+
 # 前端下拉与文档共用的一份字典清单
 ENUM_GROUPS = {
     "green_space_type": GREEN_SPACE_TYPE,
@@ -144,6 +175,11 @@ ENUM_GROUPS = {
     "replacement_reason": REPLACEMENT_REASON,
     "old_plant_status": OLD_PLANT_STATUS,
     "measure_unit": MEASURE_UNIT,
+    "acceptance_status": ACCEPTANCE_STATUS,
+    "item_check_result": ITEM_CHECK_RESULT,
+    "growth_status": GROWTH_STATUS,
+    "defect_status": DEFECT_STATUS,
+    "follow_up_status": FOLLOW_UP_STATUS,
 }
 
 

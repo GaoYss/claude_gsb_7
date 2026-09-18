@@ -14,6 +14,7 @@ from .extensions import db
 from .models import GreenSpace
 from .services import (
     GreenSpaceService,
+    HandoverAcceptanceService,
     MaintenanceRecordService,
     MaintenanceTaskService,
     PlantReplacementService,
@@ -113,6 +114,58 @@ SPACE_SEEDS = [
         "status": "archived",
         "remark": "地块已移交储备，台账归档留档。",
     },
+    {
+        "name": "亚运公园北门配套绿地",
+        "district": "拱墅区",
+        "address": "亚运公园北路北门两侧",
+        "green_type": "park",
+        "maintenance_grade": "level1",
+        "area_sqm": 18600,
+        "manager": "许文彬",
+        "contact_phone": "0571-85006677",
+        "plant_summary": "染井吉野樱 96 株、紫薇 60 株、果岭草草坪 8600 平方米",
+        "established_date": date(2025, 5, 20),
+        "remark": "亚运配套新建绿地，质保期养护重点跟踪。",
+    },
+    {
+        "name": "云城商务区道路绿地",
+        "district": "余杭区",
+        "address": "云城大道（站城北街—杭腾大道段）两侧",
+        "green_type": "road",
+        "maintenance_grade": "level2",
+        "area_sqm": 22400,
+        "manager": "高启明",
+        "contact_phone": "0571-89331100",
+        "plant_summary": "黄山栾树 180 株、金边黄杨色块 5200 平方米、混播草坪 11000 平方米",
+        "established_date": date(2025, 8, 10),
+        "remark": "商务区新建道路绿地，刚完成移交验收。",
+    },
+    {
+        "name": "铜鉴湖湿地公园二期",
+        "district": "西湖区",
+        "address": "铜鉴湖大道湿地公园二期区块",
+        "green_type": "park",
+        "maintenance_grade": "level1",
+        "area_sqm": 35800,
+        "manager": "罗丹",
+        "contact_phone": "0571-87110099",
+        "plant_summary": "水杉 220 株、再力花与菖蒲水生植物带 6400 平方米、垂柳 88 株",
+        "established_date": date(2025, 9, 15),
+        "remark": "湿地二期新移交，验收发现局部水生植物缺株，整改中。",
+    },
+    {
+        "name": "运河湾邻里公园",
+        "district": "拱墅区",
+        "address": "运河湾路 18 号邻里中心南侧",
+        "green_type": "residential",
+        "maintenance_grade": "level3",
+        "area_sqm": 9200,
+        "manager": "蒋丽华",
+        "contact_phone": "0571-88001234",
+        "plant_summary": "桂花 48 株、红叶石楠球 36 株、马尼拉草坪 4200 平方米",
+        "established_date": date(2025, 11, 1),
+        "remark": "社区公园新建成，首次验收未通过，施工方整改中。",
+    },
 ]
 
 TASK_SEEDS = [
@@ -207,7 +260,9 @@ def seed_command(reset, seed_value):
     summary = generate_demo_data(random.Random(seed_value))
     click.echo(
         "演示数据写入完成：绿地 {green_space} 处、养护任务 {maintenance_task} 条、"
-        "养护记录 {maintenance_record} 条、绿植更换 {plant_replacement} 条".format(**summary)
+        "养护记录 {maintenance_record} 条、绿植更换 {plant_replacement} 条、"
+        "移交验收单 {handover_acceptance} 张（苗木 {handover_plant_item} 行、"
+        "缺陷 {handover_defect} 项、回访 {handover_revisit} 条）".format(**summary)
     )
 
 
@@ -220,6 +275,10 @@ def generate_demo_data(rng):
         "maintenance_task": 0,
         "maintenance_record": 0,
         "plant_replacement": 0,
+        "handover_acceptance": 0,
+        "handover_plant_item": 0,
+        "handover_defect": 0,
+        "handover_revisit": 0,
     }
 
     for index, space_seed in enumerate(SPACE_SEEDS):
@@ -307,6 +366,189 @@ def generate_demo_data(rng):
                 "quality_result": "qualified",
             })
             counts["maintenance_record"] += 1
+
+    # -------------------------------------------------------- 移交验收场景
+    handover_spaces = {
+        name: db.session.query(GreenSpace).filter(GreenSpace.name == name).first()
+        for name in (
+            "亚运公园北门配套绿地",
+            "云城商务区道路绿地",
+            "铜鉴湖湿地公园二期",
+            "运河湾邻里公园",
+        )
+    }
+    sp_a = handover_spaces["亚运公园北门配套绿地"]
+    sp_b = handover_spaces["云城商务区道路绿地"]
+    sp_c = handover_spaces["铜鉴湖湿地公园二期"]
+    sp_d = handover_spaces["运河湾邻里公园"]
+
+    # A 已通过验收、质保在保：两次回访，第二次发现异常
+    if sp_a:
+        ha = HandoverAcceptanceService.create({
+            "green_space_id": sp_a.id,
+            "transferor": "杭州亚运园林建设有限公司",
+            "receiver": "拱墅区市政养护中心",
+            "handover_date": today_ - timedelta(days=130),
+            "area_sqm": 18600,
+            "warranty_months": 12,
+            "inspector": "许文彬",
+            "plant_items": [
+                {"plant_name": "染井吉野樱", "plant_category": "tree", "spec": "地径 10-12cm", "quantity": 96},
+                {"plant_name": "紫薇", "plant_category": "shrub", "spec": "冠幅 120cm", "quantity": 60},
+                {"plant_name": "果岭草草坪", "plant_category": "ground", "spec": "满铺", "quantity": 8600, "unit": "square_meter"},
+                {"plant_name": "红叶石楠球", "plant_category": "shrub", "spec": "冠幅 100cm", "quantity": 40},
+            ],
+        })
+        counts["handover_acceptance"] += 1
+        counts["handover_plant_item"] += 4
+        HandoverAcceptanceService.accept(ha.id, {
+            "inspector": "许文彬",
+            "acceptance_date": today_ - timedelta(days=120),
+            "verdict": "pass",
+            "checked_area_sqm": 18520,
+            "conclusion": "苗木数量、规格与长势符合移交要求，同意接管。",
+            "items": [
+                {"id": item.id, "checked_quantity": item.quantity,
+                 "growth_condition": "good", "check_result": "conform"}
+                for item in ha.plant_items
+            ],
+            "defects": [],
+        })
+        HandoverAcceptanceService.create_revisit(ha.id, {
+            "visit_date": today_ - timedelta(days=90), "visitor": "许文彬",
+            "survival_rate": 98.5, "result": "normal", "next_visit_date": today_ - timedelta(days=20),
+        })
+        HandoverAcceptanceService.create_revisit(ha.id, {
+            "visit_date": today_ - timedelta(days=20), "visitor": "许文彬",
+            "survival_rate": 94.0, "result": "abnormal",
+            "issue": "北门内侧约 30 平方米草坪出现枯黄斑块",
+            "handling": "已通知移交单位打孔疏草并补肥，下月回访复查",
+            "next_visit_date": today_ + timedelta(days=10),
+        })
+        counts["handover_revisit"] += 2
+
+    # B 已通过验收、质保即将到期（1 个月质保，约一周内到期）
+    if sp_b:
+        hb = HandoverAcceptanceService.create({
+            "green_space_id": sp_b.id,
+            "transferor": "云城建设投资集团",
+            "receiver": "余杭区道路绿化养护所",
+            "handover_date": today_ - timedelta(days=40),
+            "area_sqm": 22400,
+            "warranty_months": 1,
+            "plant_items": [
+                {"plant_name": "黄山栾树", "plant_category": "tree", "spec": "胸径 15-18cm", "quantity": 180},
+                {"plant_name": "金边黄杨", "plant_category": "shrub", "spec": "H40cm 色块", "quantity": 5200, "unit": "square_meter"},
+                {"plant_name": "混播草坪", "plant_category": "ground", "spec": "满铺", "quantity": 11000, "unit": "square_meter"},
+            ],
+        })
+        counts["handover_acceptance"] += 1
+        counts["handover_plant_item"] += 3
+        HandoverAcceptanceService.accept(hb.id, {
+            "inspector": "高启明",
+            "acceptance_date": today_ - timedelta(days=30),
+            "verdict": "pass",
+            "checked_area_sqm": 22350,
+            "items": [
+                {"id": item.id, "checked_quantity": item.quantity,
+                 "growth_condition": "good", "check_result": "conform"}
+                for item in hb.plant_items
+            ],
+            "defects": [],
+        })
+        HandoverAcceptanceService.create_revisit(hb.id, {
+            "visit_date": today_ - timedelta(days=8), "visitor": "高启明",
+            "survival_rate": 97.2, "result": "normal",
+        })
+        counts["handover_revisit"] += 1
+
+    # C 验收发现缺陷转整改：一项已超期、一项待整改，一株苗木数量不符
+    if sp_c:
+        hc = HandoverAcceptanceService.create({
+            "green_space_id": sp_c.id,
+            "transferor": "西湖湿地建管公司",
+            "receiver": "西湖区公园管理处",
+            "handover_date": today_ - timedelta(days=12),
+            "area_sqm": 35800,
+            "warranty_months": 12,
+            "plant_items": [
+                {"plant_name": "水杉", "plant_category": "tree", "spec": "胸径 12-14cm", "quantity": 220},
+                {"plant_name": "再力花", "plant_category": "aquatic", "spec": "3-5 芽/丛", "quantity": 6400, "unit": "square_meter"},
+                {"plant_name": "垂柳", "plant_category": "tree", "spec": "胸径 10cm", "quantity": 88},
+            ],
+        })
+        counts["handover_acceptance"] += 1
+        counts["handover_plant_item"] += 3
+        HandoverAcceptanceService.accept(hc.id, {
+            "inspector": "罗丹",
+            "acceptance_date": today_ - timedelta(days=8),
+            "verdict": "pass",
+            "checked_area_sqm": 35600,
+            "conclusion": "水生植物带局部缺株、岸坡草皮冲刷，列入整改清单。",
+            "items": [
+                {"id": hc.plant_items[0].id, "checked_quantity": 220,
+                 "growth_condition": "good", "check_result": "conform"},
+                {"id": hc.plant_items[1].id, "checked_quantity": 6200,
+                 "growth_condition": "poor", "check_result": "deficient",
+                 "remark": "缺株约 200 平方米"},
+                {"id": hc.plant_items[2].id, "checked_quantity": 88,
+                 "growth_condition": "normal", "check_result": "conform"},
+            ],
+            "defects": [
+                {"description": "再力花水生植物带缺株约 200 平方米",
+                 "location": "西岸滨水带", "severity": "general",
+                 "deadline": today_ - timedelta(days=3), "responsible": "西湖湿地建管公司"},
+                {"description": "局部岸坡草皮被雨水冲刷裸露",
+                 "location": "北岸亲水平台旁", "severity": "minor",
+                 "deadline": today_ + timedelta(days=12), "responsible": "西湖湿地建管公司"},
+            ],
+        })
+        counts["handover_defect"] += 2
+        overdue_defect = next(d for d in hc.defects if d.is_overdue)
+        HandoverAcceptanceService.update_defect(hc.id, overdue_defect.id, {"status": "rectified"})
+
+    # D 首次验收不通过，施工方整改后重新报验
+    if sp_d:
+        hd = HandoverAcceptanceService.create({
+            "green_space_id": sp_d.id,
+            "transferor": "运河湾置业有限公司",
+            "receiver": "拱墅区社区绿化养护站",
+            "handover_date": today_ - timedelta(days=5),
+            "area_sqm": 9200,
+            "warranty_months": 12,
+            "plant_items": [
+                {"plant_name": "桂花", "plant_category": "tree", "spec": "地径 8cm", "quantity": 48},
+                {"plant_name": "红叶石楠球", "plant_category": "shrub", "spec": "冠幅 80cm", "quantity": 36},
+                {"plant_name": "马尼拉草坪", "plant_category": "ground", "spec": "满铺", "quantity": 4200, "unit": "square_meter"},
+            ],
+        })
+        counts["handover_acceptance"] += 1
+        counts["handover_plant_item"] += 3
+        HandoverAcceptanceService.accept(hd.id, {
+            "inspector": "蒋丽华",
+            "acceptance_date": today_ - timedelta(days=2),
+            "verdict": "reject",
+            "conclusion": "桂花地径与红叶石楠球冠幅普遍小于清单规格，退回整改后重新报验。",
+            "items": [],
+            "defects": [],
+        })
+
+    # E 一张刚登记、尚未验收的单子（同一块绿地分期移交）
+    if sp_b:
+        HandoverAcceptanceService.create({
+            "green_space_id": sp_b.id,
+            "transferor": "云城建设投资集团",
+            "receiver": "余杭区道路绿化养护所",
+            "handover_date": today_,
+            "area_sqm": 1800,
+            "warranty_months": 12,
+            "plant_items": [
+                {"plant_name": "金森女贞", "plant_category": "shrub", "spec": "H40cm", "quantity": 1200, "unit": "square_meter"},
+                {"plant_name": "垂丝海棠", "plant_category": "tree", "spec": "地径 9cm", "quantity": 24},
+            ],
+        })
+        counts["handover_acceptance"] += 1
+        counts["handover_plant_item"] += 2
 
     # 一条已取消任务，覆盖全部状态场景
     first_space = db.session.query(GreenSpace).order_by(GreenSpace.id.asc()).first()

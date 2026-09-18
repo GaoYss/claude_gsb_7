@@ -130,6 +130,47 @@ MEASURE_UNIT = EnumGroup("measure_unit", [
     ("clump", "丛"),
 ])
 
+# ---------------------------------------------------------------- 移交验收
+HANDOVER_STATUS = EnumGroup("handover_status", [
+    ("pending", "待验收"),
+    ("rectifying", "整改中"),
+    ("accepted", "验收通过"),
+    ("rejected", "验收不通过"),
+])
+
+HANDOVER_VERDICT = EnumGroup("handover_verdict", [
+    ("pass", "验收通过"),
+    ("reject", "验收不通过"),
+])
+
+GROWTH_CONDITION = EnumGroup("growth_condition", [
+    ("good", "良好"),
+    ("normal", "一般"),
+    ("poor", "较差"),
+])
+
+PLANT_CHECK_RESULT = EnumGroup("plant_check_result", [
+    ("conform", "符合"),
+    ("deficient", "不符"),
+])
+
+DEFECT_SEVERITY = EnumGroup("defect_severity", [
+    ("severity", "严重"),
+    ("general", "一般"),
+    ("minor", "轻微"),
+])
+
+DEFECT_STATUS = EnumGroup("defect_status", [
+    ("pending", "待整改"),
+    ("rectified", "已整改待复验"),
+    ("closed", "已闭环"),
+])
+
+REVISIT_RESULT = EnumGroup("revisit_result", [
+    ("normal", "正常"),
+    ("abnormal", "异常"),
+])
+
 # 前端下拉与文档共用的一份字典清单
 ENUM_GROUPS = {
     "green_space_type": GREEN_SPACE_TYPE,
@@ -144,6 +185,13 @@ ENUM_GROUPS = {
     "replacement_reason": REPLACEMENT_REASON,
     "old_plant_status": OLD_PLANT_STATUS,
     "measure_unit": MEASURE_UNIT,
+    "handover_status": HANDOVER_STATUS,
+    "handover_verdict": HANDOVER_VERDICT,
+    "growth_condition": GROWTH_CONDITION,
+    "plant_check_result": PLANT_CHECK_RESULT,
+    "defect_severity": DEFECT_SEVERITY,
+    "defect_status": DEFECT_STATUS,
+    "revisit_result": REVISIT_RESULT,
 }
 
 

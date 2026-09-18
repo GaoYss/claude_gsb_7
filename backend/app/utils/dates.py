@@ -1,5 +1,6 @@
 """日期解析与序列化辅助。"""
 
+import calendar
 from datetime import date, datetime
 
 
@@ -42,3 +43,12 @@ def format_datetime(value):
 
 def today():
     return datetime.now().date()
+
+
+def add_months(value, months):
+    """日期加若干个整月，同月同日不存在时钳制到月末（如 1 月 31 日 +1 月 = 2 月末）。"""
+
+    total = (value.month - 1) + months
+    year, month = value.year + total // 12, total % 12 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)

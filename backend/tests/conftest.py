@@ -157,3 +157,32 @@ def seeded(app):
     from app.cli import generate_demo_data
 
     return generate_demo_data(random.Random(20260913))
+
+
+@pytest.fixture()
+def make_handover(make_space):
+    from app.services import HandoverAcceptanceService
+
+    def _make(space=None, **overrides):
+        space = space or make_space(established_date=date(2025, 1, 1))
+        plant_items = overrides.pop(
+            "plant_items",
+            [
+                {"plant_name": "香樟", "plant_category": "tree", "spec": "胸径 15cm", "quantity": 50},
+                {"plant_name": "麦冬", "plant_category": "ground", "quantity": 800,
+                 "unit": "square_meter"},
+            ],
+        )
+        payload = {
+            "green_space_id": space.id,
+            "transferor": "城建园林建设公司",
+            "receiver": "区市政养护中心",
+            "handover_date": date(2026, 9, 1),
+            "area_sqm": 3000,
+            "warranty_months": 12,
+            "plant_items": plant_items,
+        }
+        payload.update(overrides)
+        return HandoverAcceptanceService.create(payload)
+
+    return _make

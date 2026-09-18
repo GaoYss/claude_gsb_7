@@ -5,7 +5,13 @@ from sqlalchemy import and_, func, or_
 from ..constants import ENUM_GROUPS, GREEN_SPACE_STATUS
 from ..errors import ConflictError
 from ..extensions import db
-from ..models import GreenSpace, MaintenanceRecord, MaintenanceTask, PlantReplacement
+from ..models import (
+    GreenSpace,
+    HandoverAcceptance,
+    MaintenanceRecord,
+    MaintenanceTask,
+    PlantReplacement,
+)
 from ..models.maintenance_task import OPEN_STATUSES
 from ..utils.dates import format_date, today
 from ..utils.numbers import to_float
@@ -216,6 +222,23 @@ class GreenSpaceService(BaseService):
             .all()
         )
 
+        handover_rows = (
+            db.session.query(HandoverAcceptance.status, func.count(HandoverAcceptance.id))
+            .filter(HandoverAcceptance.green_space_id == space.id)
+            .group_by(HandoverAcceptance.status)
+            .all()
+        )
+        handover_status = {status: 0 for status in ENUM_GROUPS["handover_status"].values}
+        for status, count in handover_rows:
+            handover_status[status] = count
+        recent_handovers = (
+            db.session.query(HandoverAcceptance)
+            .filter(HandoverAcceptance.green_space_id == space.id)
+            .order_by(HandoverAcceptance.handover_date.desc(), HandoverAcceptance.id.desc())
+            .limit(5)
+            .all()
+        )
+
         return {
             "green_space": space.to_dict(detail=True),
             "statistics": {
@@ -229,6 +252,19 @@ class GreenSpaceService(BaseService):
                 "is_maintenance_overdue": (
                     record_stats[2] is None or (today() - record_stats[2]).days > 30
                 ),
+                "handover_count": sum(handover_status.values()),
+                "accepted_count": handover_status.get("accepted", 0),
+                "active_warranty_count": (
+                    db.session.query(func.count(HandoverAcceptance.id))
+                    .filter(
+                        HandoverAcceptance.green_space_id == space.id,
+                        HandoverAcceptance.status == "accepted",
+                        HandoverAcceptance.warranty_end_date >= today(),
+                    )
+                    .scalar()
+                    or 0
+                ),
+                "handover_status": handover_status,
             },
             "replacement_summary": [
                 {
@@ -243,7 +279,26 @@ class GreenSpaceService(BaseService):
             "recent_tasks": [item.to_dict() for item in recent_tasks],
             "recent_records": [item.to_dict() for item in recent_records],
             "recent_replacements": [item.to_dict() for item in recent_replacements],
+            "recent_handovers": [cls._handover_brief(item) for item in recent_handovers],
         }
+
+    @staticmethod
+    def _handover_brief(handover):
+        """档案页移交验收摘要：附未闭环缺陷数。"""
+
+        from ..models import HandoverDefect
+
+        data = handover.to_dict()
+        data["open_defect_count"] = (
+            db.session.query(func.count(HandoverDefect.id))
+            .filter(
+                HandoverDefect.handover_id == handover.id,
+                HandoverDefect.status != "closed",
+            )
+            .scalar()
+            or 0
+        )
+        return data
 
     # ------------------------------------------------------------ 写入
     @classmethod
@@ -262,11 +317,16 @@ class GreenSpaceService(BaseService):
             .filter(PlantReplacement.green_space_id == space.id)
             .scalar()
             or 0,
+            "handover_acceptance": db.session.query(func.count(HandoverAcceptance.id))
+            .filter(HandoverAcceptance.green_space_id == space.id)
+            .scalar()
+            or 0,
         }
         if sum(counts.values()) and not force:
             raise ConflictError(
                 "该绿地已存在养护任务 {maintenance_task} 条、养护记录 {maintenance_record} 条、"
-                "绿植更换记录 {plant_replacement} 条，删除将一并清除，请确认后重试".format(**counts),
+                "绿植更换记录 {plant_replacement} 条、移交验收单 {handover_acceptance} 张，"
+                "删除将一并清除，请确认后重试".format(**counts),
                 details=counts,
             )
         db.session.delete(space)

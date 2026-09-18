@@ -110,3 +110,23 @@ def replacement_filters(args):
     filters["date_from"] = _date(args, "date_from")
     filters["date_to"] = _date(args, "date_to")
     return filters
+
+
+def handover_filters(args):
+    filters = {}
+    green_space_id = _int(args, "green_space_id")
+    if green_space_id:
+        filters["green_space_id"] = green_space_id
+    status = _enum(args, "status", "handover_status")
+    if status:
+        filters["status"] = status
+    keyword = _text(args, "keyword")
+    if keyword:
+        filters["keyword"] = keyword
+    filters["date_from"] = _date(args, "date_from")
+    filters["date_to"] = _date(args, "date_to")
+    warranty_state = _text(args, "warranty_state")
+    if warranty_state in {"active", "expiring", "expired"}:
+        filters["warranty_state"] = warranty_state
+    filters["overdue_defects"] = _flag(args, "overdue_defects")
+    return filters

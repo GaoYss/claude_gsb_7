@@ -41,6 +41,11 @@
       <StatCard label="养护任务" :value="formatNumber(taskTotal)" unit="项"
                 :hint="`已完成 ${statistics.task_status.completed || 0} 项，进行中 ${(statistics.task_status.in_progress || 0) + (statistics.task_status.pending || 0)} 项`"
                 tone="info" icon="Tickets" />
+      <StatCard label="移交验收" :value="formatNumber(statistics.handover_count)" unit="张"
+                :hint="statistics.accepted_count
+                  ? `已接管 ${statistics.accepted_count} 张，质保在保 ${statistics.active_warranty_count || 0} 张`
+                  : '尚无移交验收记录'"
+                icon="Promotion" />
     </div>
 
     <div class="panel">
@@ -127,10 +132,44 @@
             </el-tag>
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="移交验收" name="handovers">
+          <div class="tab-actions">
+            <el-button type="primary" :icon="'Plus'" @click="goCreateHandover">登记移交单</el-button>
+            <el-button link type="primary" @click="goList('handovers')">查看全部移交验收单</el-button>
+          </div>
+          <el-table :data="recentHandovers" size="small" empty-text="暂无移交验收记录">
+            <el-table-column prop="handover_no" label="验收单编号" width="160" />
+            <el-table-column prop="handover_date" label="移交日期" width="105" />
+            <el-table-column prop="transferor" label="移交单位" min-width="150" show-overflow-tooltip />
+            <el-table-column label="登记 / 实测面积" width="150">
+              <template #default="{ row }">
+                {{ formatArea(row.area_sqm) }} / {{ formatArea(row.checked_area_sqm) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="质保到期" width="110">
+              <template #default="{ row }">{{ formatDate(row.warranty_end_date) }}</template>
+            </el-table-column>
+            <el-table-column label="缺陷" width="90">
+              <template #default="{ row }">
+                <el-tag v-if="row.open_defect_count" type="danger" size="small">
+                  待整改 {{ row.open_defect_count }}
+                </el-tag>
+                <span v-else class="text-muted">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <EnumTag group="handover_status" :value="row.status" :label="row.status_label" />
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
     <GreenSpaceFormDialog ref="formDialog" @saved="load" />
+    <HandoverFormDialog ref="handoverFormDialog" @saved="load" />
   </div>
 </template>
 
@@ -145,18 +184,21 @@ import StatCard from '@/components/common/StatCard.vue'
 import { formatArea, formatCurrency, formatDate, formatHours, formatNumber } from '@/utils/format'
 
 import GreenSpaceFormDialog from './GreenSpaceFormDialog.vue'
+import HandoverFormDialog from '../handover/HandoverFormDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const formDialog = ref(null)
+const handoverFormDialog = ref(null)
 const loading = ref(false)
-const activeTab = ref('tasks')
+const activeTab = ref(route.query.tab === 'handovers' ? 'handovers' : 'tasks')
 
 const space = ref({})
 const statistics = ref({ task_status: {}, record_count: 0, total_work_hours: 0, replacement_count: 0, replacement_quantity: 0, replacement_amount: 0 })
 const recentTasks = ref([])
 const recentRecords = ref([])
 const recentReplacements = ref([])
+const recentHandovers = ref([])
 const replacementSummary = ref([])
 
 const taskTotal = computed(() =>
@@ -172,6 +214,7 @@ async function load() {
     recentTasks.value = data.recent_tasks || []
     recentRecords.value = data.recent_records || []
     recentReplacements.value = data.recent_replacements || []
+    recentHandovers.value = data.recent_handovers || []
     replacementSummary.value = data.replacement_summary || []
   } finally {
     loading.value = false
@@ -182,10 +225,15 @@ const LIST_ROUTES = {
   tasks: 'task-list',
   records: 'record-list',
   replacements: 'replacement-list',
+  handovers: 'handover-list',
 }
 
 function goList(name) {
   router.push({ name: LIST_ROUTES[name], query: { green_space_id: route.params.id } })
+}
+
+function goCreateHandover() {
+  handoverFormDialog.value?.open(null, space.value)
 }
 
 onMounted(load)
@@ -208,5 +256,9 @@ onMounted(load)
 
 .summary-tag {
   margin-right: 4px;
+}
+
+.text-muted {
+  color: #c0c4cc;
 }
 </style>

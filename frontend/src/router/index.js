@@ -44,6 +44,12 @@ const routes = [
         component: () => import('@/views/replacement/ReplacementListView.vue'),
         meta: { title: '绿植更换', icon: 'Cherry' },
       },
+      {
+        path: 'handovers',
+        name: 'handover-list',
+        component: () => import('@/views/handover/HandoverListView.vue'),
+        meta: { title: '移交验收', icon: 'Promotion' },
+      },
     ],
   },
   {
